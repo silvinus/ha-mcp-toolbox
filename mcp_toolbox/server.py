@@ -70,7 +70,7 @@ def load_plugins(folder: pathlib.Path) -> None:
 
 def build_ha_server(excluded: list[str]) -> FastMCP:
     """Same tools as the main server, minus the excluded ones."""
-    ha = FastMCP("toolbox-ha", instructions=INSTRUCTIONS, stateless_http=True)
+    ha = FastMCP("toolbox-ha", instructions=INSTRUCTIONS, host="0.0.0.0", stateless_http=True)
     for name, tool in mcp._tool_manager._tools.items():  # FastMCP 1.x internals (version pinned)
         if name not in excluded:
             ha._tool_manager._tools[name] = tool
