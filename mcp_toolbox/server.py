@@ -29,6 +29,12 @@ logging.basicConfig(
 )
 log = logging.getLogger("mcp_toolbox")
 
+# Plugin settings: "KEY=VALUE" entries from the app options become environment variables.
+for entry in options.get("env", []):
+    key, sep, value = entry.partition("=")
+    if sep and key.strip():
+        os.environ[key.strip()] = value.strip()
+
 mcp = FastMCP(
     "toolbox",
     instructions="Outils maison de Sylvain, hébergés sur le Raspberry Pi.",

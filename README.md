@@ -23,6 +23,15 @@ Deux emplacements :
 
 Un plugin cassé est ignoré : l'erreur est dans le journal de l'app.
 
+Réglages des plugins : l'option `env` de l'app est une liste de `CLE=VALEUR`, transformées en variables d'environnement avant le chargement des plugins.
+
+## Tools fournis
+
+| Tool | Rôle | Réglage |
+|------|------|---------|
+| `pi_status` | Température CPU, charge, mémoire, disque, uptime de la machine | — |
+| `planning_ecbatan(mois)` | Réservations Ecbatan du mois (`AAAA-MM`, mois en cours par défaut), via `GET /api/planning` | `ECBATAN_URL` |
+
 ## Clients
 
 - Claude Code : `claude mcp add --transport http toolbox http://192.168.1.39:8765/mcp --header "Authorization: Bearer <token>"`
