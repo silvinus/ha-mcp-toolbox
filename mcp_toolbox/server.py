@@ -1,7 +1,13 @@
 """Generic MCP server: loads tool plugins and serves them over Streamable HTTP and SSE.
 
-A plugin is a .py file exposing ``register(mcp)``. Plugins are loaded from the
-built-in ``tools/`` folder and from ``/share/mcp-tools`` (editable on the Pi).
+A plugin is a .py file exposing ``register(mcp)`` and, optionally, ``sensors()`` (values
+published to Home Assistant over MQTT, see publisher.py). Plugins are loaded from the built-in
+``tools/`` folder and from ``/share/mcp-tools`` (editable on the Pi).
+
+Two audiences:
+- ``/mcp`` and ``/sse``: every tool (Claude, token required outside trusted networks);
+- ``/ha/sse``: the same tools minus ``ha_exclude`` (Home Assistant's voice assistant, whose
+  small local model gets slower with each extra tool).
 """
 
 import hmac
@@ -15,6 +21,9 @@ import sys
 
 import uvicorn
 from mcp.server.fastmcp import FastMCP
+from starlette.routing import Mount
+
+from publisher import start_publisher
 
 OPTIONS_PATH = pathlib.Path(os.environ.get("OPTIONS_PATH", "/data/options.json"))
 BUILTIN_TOOLS = pathlib.Path(__file__).parent / "tools"
@@ -35,19 +44,16 @@ for entry in options.get("env", []):
     if sep and key.strip():
         os.environ[key.strip()] = value.strip()
 
-mcp = FastMCP(
-    "toolbox",
-    instructions="Outils maison de Sylvain, hébergés sur le Raspberry Pi.",
-    host="0.0.0.0",
-    port=PORT,
-    stateless_http=True,
-)
+INSTRUCTIONS = "Outils maison de Sylvain, hébergés sur le Raspberry Pi."
+mcp = FastMCP("toolbox", instructions=INSTRUCTIONS, host="0.0.0.0", port=PORT, stateless_http=True)
+plugins: list = []
 
 
 def load_plugins(folder: pathlib.Path) -> None:
     if not folder.is_dir():
         log.info("No plugin folder at %s", folder)
         return
+    sys.path.insert(0, str(folder))  # lets plugins import shared "_helpers" from their folder
     for path in sorted(folder.glob("*.py")):
         if path.name.startswith("_"):
             continue
@@ -56,9 +62,20 @@ def load_plugins(folder: pathlib.Path) -> None:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             module.register(mcp)
+            plugins.append(module)
             log.info("Loaded plugin %s", path)
         except Exception:  # a broken plugin must not take the server down
             log.exception("Failed to load plugin %s", path)
+
+
+def build_ha_server(excluded: list[str]) -> FastMCP:
+    """Same tools as the main server, minus the excluded ones."""
+    ha = FastMCP("toolbox-ha", instructions=INSTRUCTIONS, stateless_http=True)
+    for name, tool in mcp._tool_manager._tools.items():  # FastMCP 1.x internals (version pinned)
+        if name not in excluded:
+            ha._tool_manager._tools[name] = tool
+    log.info("Voice assistant tools: %s", sorted(ha._tool_manager._tools))
+    return ha
 
 
 class AuthMiddleware:
@@ -95,8 +112,10 @@ class AuthMiddleware:
 
 
 def build_app():
-    app = mcp.streamable_http_app()          # /mcp (+ session manager lifespan)
-    app.router.routes.extend(mcp.sse_app().routes)  # /sse and /messages/
+    app = mcp.streamable_http_app()                  # /mcp (+ session manager lifespan)
+    app.router.routes.extend(mcp.sse_app().routes)   # /sse and /messages/
+    ha = build_ha_server(options.get("ha_exclude", []))
+    app.router.routes.insert(0, Mount("/ha", app=ha.sse_app()))  # /ha/sse and /ha/messages/
     return AuthMiddleware(app, options.get("token", ""), options.get("trusted_networks", []))
 
 
@@ -105,4 +124,5 @@ if __name__ == "__main__":
     load_plugins(SHARE_TOOLS)
     if not options.get("token"):
         log.warning("No token set: only trusted networks can connect")
+    start_publisher(plugins, interval_minutes=float(options.get("sensor_interval_minutes", 30)))
     uvicorn.run(build_app(), host="0.0.0.0", port=PORT, log_level=options.get("log_level", "info"))

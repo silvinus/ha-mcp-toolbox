@@ -1,5 +1,5 @@
 name: MCP Toolbox
-version: "0.2.1"
+version: "0.3.0"
 slug: mcp_toolbox
 description: Serveur MCP générique (tools en plugins) pour Claude et les LLM de Home Assistant
 url: https://github.com/silvinus/ha-mcp-toolbox
@@ -9,10 +9,13 @@ arch:
 startup: application
 boot: auto
 init: false
+homeassistant_api: true
+services:
+  - mqtt:want
 ports:
   8765/tcp: 8765
 ports_description:
-  8765/tcp: MCP (Streamable HTTP /mcp et SSE /sse)
+  8765/tcp: MCP (Streamable HTTP /mcp, SSE /sse, assistant vocal /ha/sse)
 map:
   - share:ro
 watchdog: tcp://[HOST]:[PORT:8765]
@@ -21,6 +24,10 @@ options:
   trusted_networks:
     - 172.30.32.0/23
   log_level: info
+  ha_exclude:
+    - etat_github
+    - etat_ia_locale
+  sensor_interval_minutes: 30
   env:
     - ECBATAN_URL=https://planning.example.invalid
 schema:
@@ -28,5 +35,8 @@ schema:
   trusted_networks:
     - str
   log_level: list(debug|info|warning|error)
+  ha_exclude:
+    - str
+  sensor_interval_minutes: int(5,1440)
   env:
     - str

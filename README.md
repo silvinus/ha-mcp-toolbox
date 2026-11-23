@@ -27,10 +27,27 @@ Réglages des plugins : l'option `env` de l'app est une liste de `CLE=VALEUR`, t
 
 ## Tools fournis
 
-| Tool | Rôle | Réglage |
-|------|------|---------|
-| `pi_status` | Température CPU, charge, mémoire, disque, uptime de la machine | — |
-| `planning_ecbatan(mois)` | Réservations Ecbatan du mois (`AAAA-MM`, mois en cours par défaut), via `GET /api/planning` | `ECBATAN_URL` |
+| Tool | Rôle | Réglages (`env`) | Assistant vocal |
+|------|------|------------------|-----------------|
+| `pi_status` | Température CPU, charge, mémoire, disque, uptime | — | oui |
+| `planning_ecbatan(mois)` | Réservations Ecbatan du mois (`GET /api/planning`) | `ECBATAN_URL` | oui |
+| `etat_sites` | Disponibilité + expiration des certificats ; alerte HA (notification) à chaque changement | `SITES=Nom\|url;…`, `ALERT_NOTIFY`, `CERT_WARN_DAYS` | oui |
+| `prix_carburant(carburant, rayon_km)` | Stations les moins chères autour de la maison (data.economie.gouv.fr) | `FUEL_DEFAULT`, `FUEL_RADIUS_KM` (capteur) | oui |
+| `couleur_tempo` | Couleur EDF Tempo aujourd'hui / demain, jours restants | — | oui |
+| `qualite_air` | Indice européen, particules, ozone, pollens (Open-Meteo) | — | oui |
+| `etat_ia_locale` | Ollama (modèles chargés) et Whisper sur le PC | `OLLAMA_URL`, `WHISPER_ADDR` | non |
+| `etat_github` | PR ouvertes et derniers workflows | `GITHUB_REPOS`, `GITHUB_TOKEN` (optionnel) | non |
+
+La position de la maison vient de la zone *home* de Home Assistant (ou de `HOME_LAT` / `HOME_LON`).
+
+## Deux publics
+
+- `/mcp` et `/sse` : tous les tools (Claude).
+- `/ha/sse` : les mêmes, sauf ceux listés dans l'option `ha_exclude`. C'est l'URL à donner à l'intégration MCP de HA. Le petit modèle local ralentit à chaque tool ajouté.
+
+## Capteurs Home Assistant
+
+Un plugin peut aussi exposer `sensors()`. Les valeurs sont publiées via MQTT discovery (Mosquitto) toutes les `sensor_interval_minutes`, sur l'appareil « MCP Toolbox » : Tempo, qualité de l'air, pollens, carburant, sites, certificats, Ollama, Whisper, GitHub. La surveillance des sites tourne dans cette même boucle et envoie les alertes.
 
 ## Clients
 
