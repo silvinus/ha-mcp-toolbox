@@ -1,5 +1,5 @@
 name: MCP Toolbox
-version: "0.2.0"
+version: "0.2.1"
 slug: mcp_toolbox
 description: Serveur MCP générique (tools en plugins) pour Claude et les LLM de Home Assistant
 url: https://github.com/silvinus/ha-mcp-toolbox

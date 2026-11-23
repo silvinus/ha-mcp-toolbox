@@ -57,4 +57,8 @@ def register(mcp):
         else:
             today = dt.date.today()
             year, month = today.year, today.month
-        return format_planning(_fetch(year, month))
+        try:
+            planning = _fetch(year, month)
+        except Exception as error:  # site down, paused or unreachable: say it plainly
+            return f"Le site du planning Ecbatan ne répond pas pour le moment ({type(error).__name__}). Réessaie plus tard."
+        return format_planning(planning)
